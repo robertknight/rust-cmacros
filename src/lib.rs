@@ -1,21 +1,26 @@
-mod parse_macro;
+//! Library providing functions to assist with parsing and translating
+//! '#define' macro definitions from C header files to corresponding
+//! Rust code for use with bindings to external libraries.
 
-/// Represents a macro definition parsed from
-/// a C header file
+/// Macro definition parsed from a C header file
 #[derive(PartialEq, Debug)]
 pub struct CMacro {
+    /// The name of the macro
     pub name: String,
+    /// The arguments to the macro if it is a function-like macro
     pub args: Option<Vec<String>>,
+    /// The text that the macro expands to
     pub body: Option<String>
 }
 
+/// Attributes for a Rust constant definition
 pub struct ConstDecl {
     pub name: String,
     pub type_name: String,
     pub expr: String
 }
 
-/// TranslateAction specifies a transformation
+/// Specifies a transformation
 /// from a C macro definition to Rust code
 pub enum TranslateAction {
     /// Generate a constant with a specified type
