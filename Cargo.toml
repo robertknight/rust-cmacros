@@ -1,5 +1,6 @@
 [package]
 name = "cmacros"
+description = "Functions for parsing #define macros from C headers and translating them to Rust code"
 version = "0.1.0"
 authors = ["Robert Knight <robertknight@gmail.com>"]
 repository = "https://github.com/robertknight/rust-cmacros"
