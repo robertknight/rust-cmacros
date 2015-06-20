@@ -52,7 +52,7 @@ impl<'a> CharStream<'a> {
 
     fn next(&mut self) -> char {
         let ch = self.peek(0);
-        self.pos += 1;
+        self.pos += ch.len_utf8();
         ch
     }
 
@@ -129,6 +129,20 @@ fn is_ident_char(ch: char) -> bool {
     }
 }
 
+fn parse_c_style_comment(input: &mut CharStream) -> bool {
+    if !input.consume("/*") {
+        return false;
+    }
+
+    while !input.at_end() {
+        if input.consume("*/") {
+            break;
+        }
+        input.next();
+    }
+    true
+}
+
 fn parse_arg_list(input: &mut CharStream) -> Result<Vec<String>,String> {
     let mut args: Vec<String> = vec![];
     input.consume_char('(');
@@ -136,6 +150,20 @@ fn parse_arg_list(input: &mut CharStream) -> Result<Vec<String>,String> {
         match input.peek(0) {
             ',' => { input.next(); }
             ')' => { input.next(); return Ok(args) },
+            '.' => {
+                if input.consume("...") {
+                    args.push("...".to_string());
+                } else {
+                    return Err(format!("Expected '...' in macro argument list"))
+                }
+            },
+            '/' => {
+                if parse_c_style_comment(input) {
+                    continue;
+                } else {
+                    return Err(format!("Expected C-style comment after '/' in argument list"));
+                }
+            },
             ch if ch.is_whitespace() => { input.next(); }
             ch if is_ident_char(ch) => {
                 args.push(parse_ident(input).to_string());
@@ -176,7 +204,7 @@ fn parse_macro(input: &mut CharStream) -> Result<CMacro,String> {
 
 /// Parse the source for a C header and extract
 /// a list of macro definitions
-pub fn extract_macros(src: &str) -> Vec<CMacro> {
+pub fn extract_macros(src: &str) -> Result<Vec<CMacro>,String> {
     let mut macros: Vec<CMacro> = vec![];
     let line_iter = CHeaderLineIter{input: CharStream::new(src)};
     for line in line_iter {
@@ -195,12 +223,10 @@ pub fn extract_macros(src: &str) -> Vec<CMacro> {
 
         match parse_macro(&mut macro_def) {
             Ok(cmacro) => macros.push(cmacro),
-            Err(err) => {
-                panic!("failed to parse {}: {}", &line, err)
-            }
+            Err(err) => return Err(err)
         }
     }
-    macros
+    Ok(macros)
 }
 
 /// Generates Rust source based on a set of C macro definitions and
@@ -282,6 +308,9 @@ fn test_extract_macros() {
   #define PRECEDING_SPACES
 
 # define SPACE_AFTER_HASH
+
+#define VARIADIC_MACRO(...) __VA_ARGS__
+#define COMMENT_IN_ARGS(/* foo */ a) bar
 ";
     let expected_macros: Vec<CMacro> = vec![
         CMacro::new("CONST_1", Some("1")),
@@ -293,9 +322,11 @@ fn test_extract_macros() {
         CMacro::new_with_args("MACRO_WITH_ARGS_2", vec!["a","b","c"], "((a) + (b) + (c))"),
         CMacro::new_with_args("MULTI_LINE_MACRO", vec!["a","b"], "a + b"),
         CMacro::new("PRECEDING_SPACES", None),
-        CMacro::new("SPACE_AFTER_HASH", None)
+        CMacro::new("SPACE_AFTER_HASH", None),
+        CMacro::new_with_args("VARIADIC_MACRO", vec!["..."], "__VA_ARGS__"),
+        CMacro::new_with_args("COMMENT_IN_ARGS", vec!["a"], "bar")
     ];
-    let actual_macros = extract_macros(src);
+    let actual_macros = extract_macros(src).unwrap();
 
     let expected_macro_names: Vec<&str> = expected_macros.iter().map(|m| &m.name[..]).collect();
     let actual_macro_names: Vec<&str> = actual_macros.iter().map(|m| &m.name[..]).collect();
@@ -304,6 +335,21 @@ fn test_extract_macros() {
     for (actual, expected) in expected_macros.iter().zip(actual_macros.iter()) {
         assert_eq!(actual, expected);
     }
+}
+
+// the parser does not currently skip macros in C-style
+// comment blocks
+#[test]
+#[ignore]
+fn test_skip_macros_in_comments() {
+    let src = r"
+#define NOT_IN_COMMENT
+/*
+#define IN_C_STYLE_COMMENT
+*/";
+    let macros = extract_macros(src).unwrap();
+    let macro_names: Vec<&str> = macros.iter().map(|m| &m.name[..]).collect();
+    assert_eq!(macro_names, vec!["NOT_IN_COMMENT"]);
 }
 
 #[test]

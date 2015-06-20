@@ -1,3 +1,4 @@
+use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
 
@@ -11,7 +12,7 @@ fn main() {
         Err(e) => panic!("Failed to read header file: {}", e),
         _ => ()
     }
-    let macros = cmacros::extract_macros(&header_src);
+    let macros = cmacros::extract_macros(&header_src).unwrap();
     let skipped_macros = [
         "SQLITE_EXTERN",
         "SQLITE_STATIC",
