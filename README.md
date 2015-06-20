@@ -1,4 +1,5 @@
 # rust-cmacros
+[![Build Status](https://travis-ci.org/robertknight/rust-cmacros.png?branch=master)](https://travis-ci.org/robertknight/rust-cmacros)
 
 Rust library to assist with parsing and translating #define
 macro definitions from C header files
