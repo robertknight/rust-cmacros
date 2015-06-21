@@ -23,3 +23,19 @@ It has two basic functions:
 * `generate_rust_src()` takes as input a set of extracted macros and a translator function
   and generates Rust code.
 
+## Examples
+
+```rust
+cargo run --example parse_all_headers /usr/include
+```
+
+Parse all headers in `/usr/include` and print re-constructed #define statements
+
+```rust
+cargo run --example translate_macros /usr/include/sqlite3.h
+```
+
+Parse `/usr/include/sqlite3.h` and output translations of the macros using the default translation function.
+In real usage, you would supply a translation function to skip or modify the translations
+for non-trivial or unnecessary macros.
+

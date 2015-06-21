@@ -9,3 +9,4 @@ license = "MIT"
 
 [dependencies]
 walker="^1.0.0"
+argparse="^0.2.0"

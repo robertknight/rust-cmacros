@@ -1,24 +1,36 @@
-use walker::Walker;
 use std::fs::File;
-use std::path::Path;
 use std::io::{Read, Write};
+use std::path::{Path};
+use walker::Walker;
 
+extern crate argparse;
 extern crate walker;
 extern crate cmacros;
 
-// http://stackoverflow.com/questions/27588416/how-to-send-output-to-stderr
-macro_rules! println_stderr(
-    ($($arg:tt)*) => (
-        match writeln!(&mut ::std::io::stderr(), $($arg)* ) {
-            Ok(_) => {},
-            Err(x) => panic!("Unable to write to stderr: {}", x),
-        }
-    )
-);
+#[macro_use]
+mod util;
 
 fn main() {
-    let include_root = Path::new("/usr/include");
-    for entry in Walker::new(include_root).unwrap() {
+    let mut input_dir = String::new();
+    {
+        let mut parser = argparse::ArgumentParser::new();
+        parser.set_description("Parse all headers in a given directory and output all macro definitions found");
+        parser
+          .refer(&mut input_dir)
+          .add_argument("dir", argparse::Store, "Directory containing headers to parse")
+          .required();
+        parser.parse_args_or_exit();
+    }
+    let input_root = Path::new(&input_dir);
+
+    let walker = match Walker::new(&input_root) {
+        Ok(walker) => walker,
+        Err(err) => {
+            fatal_err!("Unable to walk dir '{}': {}", input_root.to_string_lossy(), err);
+        }
+    };
+
+    for entry in walker {
         if entry.is_err() {
             println_stderr!("Skipping {:?}", entry.err());
             continue;
@@ -32,7 +44,7 @@ fn main() {
             }
         }
 
-        let file_path = include_root.join(entry.path());
+        let file_path = input_root.join(entry.path());
         let mut hdr = File::open(&file_path).unwrap();
         let mut src = String::new();
         match hdr.read_to_string(&mut src) {
