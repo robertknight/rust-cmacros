@@ -6,6 +6,8 @@ macro definitions from C header files
 to corresponding Rust code for use with bindings
 to external libraries.
 
+**Update: Vojtech Kral suggested a much better idea - Generate C++ code which leverages the compiler's type inference to determine the types of macros: http://vojtech.kral.hk/en/rust-importing-c-constants-proof-of-concept/**
+
 ## Intro
 
 To use libraries with a C interface from Rust,
